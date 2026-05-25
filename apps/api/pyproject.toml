@@ -1,3 +1,11 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+exclude = ["tests*", "uploads*"]
+
 [project]
 name = "cv-analyzer-api"
 version = "0.1.0"
@@ -43,3 +51,6 @@ dev = [
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+markers = [
+  "live: live integration/benchmark tests (require RUN_LIVE_BENCHMARKS=1)",
+]
