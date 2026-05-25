@@ -26,7 +26,7 @@ SEMANTIC_METRIC_GUIDES: Dict[str, str] = {
     ),
     "match_score": (
         "Загальний бал — зважена комбінація трьох показників вище з вагами з цієї відповіді "
-        "(типово: навички 0,5, досвід 0,3, усе резюме vs вакансія 0,2). "
+        "(типово: навички 0,5, досвід 0,3, загальна схожість 0,2). "
         "Адміністратор може змінити ваги в конфігурації сервера."
     ),
 }
@@ -71,6 +71,11 @@ class _Embedder:
         return self._embed(text)
 
     def embed_documents(self, texts: List[str]) -> List[List[float]]:
+        if not texts:
+            return []
+        return self._embed_batch(texts)
+
+    def _embed_batch(self, texts: List[str]) -> List[List[float]]:
         return [self._embed(t) for t in texts]
 
     @property
@@ -111,14 +116,34 @@ def _get_sentence_transformers_embedder():
     from sentence_transformers import SentenceTransformer
     model_name = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
     st = SentenceTransformer(model_name, device="cpu")
+    dim = st.get_sentence_embedding_dimension()
 
     def embed_fn(text: str) -> List[float]:
         if not text or not text.strip():
-            return [0.0] * st.get_sentence_embedding_dimension()
+            return [0.0] * dim
         return st.encode(text.strip(), normalize_embeddings=True).tolist()
 
-    dim = st.get_sentence_embedding_dimension()
-    return _Embedder(embed_fn, dim)
+    def embed_batch(texts: List[str]) -> List[List[float]]:
+        if not texts:
+            return []
+        result: List[List[float]] = [[0.0] * dim for _ in texts]
+        non_empty_idx: List[int] = []
+        non_empty: List[str] = []
+        for i, t in enumerate(texts):
+            s = (t or "").strip()
+            if s:
+                non_empty_idx.append(i)
+                non_empty.append(s)
+        if not non_empty:
+            return result
+        encoded = st.encode(non_empty, normalize_embeddings=True, batch_size=min(32, len(non_empty)))
+        for idx, vec in zip(non_empty_idx, encoded):
+            result[idx] = vec.tolist()
+        return result
+
+    embedder = _Embedder(embed_fn, dim)
+    embedder._embed_batch = embed_batch  # type: ignore[attr-defined]
+    return embedder
 
 
 _embedder = None
@@ -137,6 +162,14 @@ def embed_text(text: str) -> List[float]:
         dim = getattr(emb, "dimension", None) or len(emb.embed_query(" "))
         return [0.0] * dim
     return emb.embed_query(text.strip())
+
+
+def embed_texts_batch(texts: List[str]) -> List[List[float]]:
+    emb = get_embedder()
+    batch_fn = getattr(emb, "_embed_batch", None)
+    if callable(batch_fn):
+        return batch_fn(texts)
+    return [embed_text(t) for t in texts]
 
 
 def compute_semantic_match(
@@ -160,11 +193,13 @@ def compute_semantic_match(
     job_req_block = _block(job_requirements_text)
     job_full_block = _block(job_full_text, max_chars=12000)
 
-    skills_cv_vec = embed_text(cv_skills_block) if cv_skills_block else None
-    exp_cv_vec = embed_text(cv_exp_block) if cv_exp_block else None
-    full_cv_vec = embed_text(cv_full_block) if cv_full_block else None
-    job_req_vec = embed_text(job_req_block) if job_req_block else None
-    job_full_vec = embed_text(job_full_block) if job_full_block else None
+    blocks = [cv_skills_block, cv_exp_block, cv_full_block, job_req_block, job_full_block]
+    vecs = embed_texts_batch(blocks)
+    skills_cv_vec = vecs[0] if cv_skills_block else None
+    exp_cv_vec = vecs[1] if cv_exp_block else None
+    full_cv_vec = vecs[2] if cv_full_block else None
+    job_req_vec = vecs[3] if job_req_block else None
+    job_full_vec = vecs[4] if job_full_block else None
 
     skills_sim = 0.0
     if skills_cv_vec and job_req_vec:
