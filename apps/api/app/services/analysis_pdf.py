@@ -49,6 +49,7 @@ def _resolve_dejavu_font_path() -> Path:
 def render_analysis_pdf(resp: CVAnalysisResponse) -> bytes:
     try:
         from fpdf import FPDF
+        from fpdf.enums import XPos, YPos
     except ImportError as e:
         raise RuntimeError("PDF export requires the fpdf2 package: pip install fpdf2") from e
 
@@ -59,11 +60,13 @@ def render_analysis_pdf(resp: CVAnalysisResponse) -> bytes:
     pdf.add_page()
     pdf.add_font("DejaVu", "", str(font_path))
     pdf.set_font("DejaVu", "", 11)
+    line_w = pdf.epw
 
     def _line(text: str) -> None:
         for paragraph in (text or "").split("\n"):
             p = (paragraph or " ").strip() or " "
-            pdf.multi_cell(0, 6, p)
+            pdf.set_x(pdf.l_margin)
+            pdf.multi_cell(line_w, 6, p, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
         pdf.ln(2)
 
     pdf.set_font("DejaVu", "", 14)
@@ -85,12 +88,12 @@ def render_analysis_pdf(resp: CVAnalysisResponse) -> bytes:
         _line(
             f"  Навички: {sb.get('skills_similarity', 0):.3f}\n"
             f"  Досвід: {sb.get('experience_similarity', 0):.3f}\n"
-            f"  Усе резюме vs вакансія: {sb.get('overall_similarity', 0):.3f}"
+            f"  Загальна схожість: {sb.get('overall_similarity', 0):.3f}"
         )
         if resp.semantic_weights:
             sw = resp.semantic_weights
             _line(
-                "  Ваги (навички, досвід, усе резюме vs вакансія): "
+                "  Ваги (навички, досвід, загальна схожість): "
                 f"{sw.get('skills', 0):.3f}, {sw.get('experience', 0):.3f}, {sw.get('overall', 0):.3f}"
             )
 
@@ -106,11 +109,11 @@ def render_analysis_pdf(resp: CVAnalysisResponse) -> bytes:
         me = resp.match_explainability
         if me.component_attributions:
             _line("Внесок блоків у загальний бал (SHAP, лінійна декомпозиція):")
-            labels = {"skills": "Навички", "experience": "Досвід", "overall": "Усе резюме vs вакансія"}
+            labels = {"skills": "Навички", "experience": "Досвід", "overall": "Загальна схожість"}
             for key, label in labels.items():
                 val = me.component_attributions.get(key)
                 if val is not None:
-                    _line(f"  {label}: {val * 100:+.2f} п.п.")
+                    _line(f"  {label}: {val * 100:+.2f} балів")
         for method_result, title in ((me.shap, "SHAP"), (me.lime, "LIME")):
             if not method_result:
                 continue
@@ -118,11 +121,11 @@ def render_analysis_pdf(resp: CVAnalysisResponse) -> bytes:
             if method_result.top_positive:
                 _line("  Підвищують бал:")
                 for item in method_result.top_positive:
-                    _line(f"    • {item.feature}: {item.contribution * 100:+.2f} п.п.")
+                    _line(f"    • {item.feature}: {item.contribution * 100:+.2f} балів")
             if method_result.top_negative:
                 _line("  Знижують бал:")
                 for item in method_result.top_negative:
-                    _line(f"    • {item.feature}: {item.contribution * 100:+.2f} п.п.")
+                    _line(f"    • {item.feature}: {item.contribution * 100:+.2f} балів")
 
     if resp.matched_competencies:
         _line("Відповідні компетенції:")
@@ -134,25 +137,27 @@ def render_analysis_pdf(resp: CVAnalysisResponse) -> bytes:
 
     if resp.analysis:
         summ = resp.analysis.get("summary")
-        if summ:
-            _line("Підсумок:")
-            _line(str(summ))
-        strengths = resp.analysis.get("strengths")
-        if strengths:
-            _line("Сильні сторони:")
-            if isinstance(strengths, list):
-                _line("\n".join(f"• {s}" for s in strengths))
-            else:
-                _line(str(strengths))
-        weaknesses = resp.analysis.get("weaknesses")
-        if weaknesses:
-            _line("Слабкі сторони:")
-            if isinstance(weaknesses, list):
-                _line("\n".join(f"• {w}" for w in weaknesses))
-            else:
-                _line(str(weaknesses))
+        summ_text = str(summ).strip() if summ else ""
+        if summ_text:
+            _line("Підсумок та поради:")
+            _line(summ_text)
+        else:
+            strengths = resp.analysis.get("strengths")
+            weaknesses = resp.analysis.get("weaknesses")
+            if strengths:
+                _line("Сильні сторони:")
+                if isinstance(strengths, list):
+                    _line("\n".join(f"• {s}" for s in strengths))
+                else:
+                    _line(str(strengths))
+            if weaknesses:
+                _line("Слабкі сторони:")
+                if isinstance(weaknesses, list):
+                    _line("\n".join(f"• {w}" for w in weaknesses))
+                else:
+                    _line(str(weaknesses))
 
-    if resp.recommendations:
+    if resp.recommendations and not (resp.analysis and str(resp.analysis.get("summary") or "").strip()):
         _line("Рекомендовані покращення:")
         _line("\n".join(f"• {r}" for r in resp.recommendations))
 
