@@ -42,17 +42,20 @@ def test_explain_match_score_with_mocked_semantic_match():
         overall_similarity=0.5,
     )
 
-    def fake_compute(cv_skills, cv_experience_text, cv_full_text, job_requirements_text, job_full_text):
-        n = len(cv_skills) + (1 if cv_experience_text.strip() else 0)
-        base = 0.1 * n
-        return SemanticMatchResult(
-            score=min(1.0, base),
-            skills_similarity=base,
-            experience_similarity=base,
-            overall_similarity=0.5,
-        )
+    vec = [1.0, 0.0, 0.5]
 
-    with patch("app.services.match_explainer.compute_semantic_match", side_effect=fake_compute):
+    def fake_embed(_text: str):
+        return vec
+
+    def fake_embed_batch(texts):
+        return [vec for _ in texts]
+
+    with (
+        patch("app.services.match_explainer.embed_texts_batch", side_effect=fake_embed_batch),
+        patch("app.services.match_explainer.embed_text", side_effect=fake_embed),
+        patch("app.services.match_explainer.settings.explainer_shap_samples", 4),
+        patch("app.services.match_explainer.settings.explainer_lime_samples", 4),
+    ):
         result = explain_match_score(
             sem=sem,
             skills=["Python", "SQL"],

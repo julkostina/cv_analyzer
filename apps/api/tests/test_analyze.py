@@ -98,6 +98,32 @@ async def test_analyze_return_pdf_when_requested(client):
 
 
 @pytest.mark.asyncio
+async def test_report_pdf_from_analysis_json(client):
+    """POST /report/pdf builds PDF from stored analysis without re-upload."""
+    mock_response = CVAnalysisResponse(
+        success=True,
+        extracted_text="Sample CV text",
+        analysis={"summary": "Підсумок для кандидата."},
+        skills=["Python"],
+        experience=[],
+        education=[],
+        match_score=0.9,
+        match_score_reasoning="Test rationale",
+        recommendations=["Recommendation"],
+        error=None,
+    )
+    fake_pdf = b"%PDF-1.4\n%\xe2\xe3\xcf\xd3\n"
+
+    with patch("app.routers.cv_router.render_analysis_pdf", return_value=fake_pdf) as mock_pdf:
+        response = await client.post("/api/v1/report/pdf", json=mock_response.model_dump())
+
+    assert response.status_code == 200
+    assert response.headers.get("content-type", "").startswith("application/pdf")
+    mock_pdf.assert_called_once()
+    assert response.content.startswith(b"%PDF")
+
+
+@pytest.mark.asyncio
 async def test_analyze_parse_failure_returns_400(client):
     """Parser raises → 400 with readable Ukrainian message (FR-07)."""
     with patch("app.routers.cv_router.CVParser") as MockParser:
