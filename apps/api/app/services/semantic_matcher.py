@@ -2,34 +2,11 @@
 
 import logging
 from dataclasses import dataclass
-from typing import Dict, List, Tuple
+from typing import Callable, List, Tuple
 
 from app.config import settings
 
 logger = logging.getLogger(__name__)
-
-# Shown in API/UI when semantic matching is used (same keys as semantic_weights response).
-SEMANTIC_METRIC_GUIDES: Dict[str, str] = {
-    "skills": (
-        "Низький бал навичок часто означає, що список навичок порожній або дуже короткий, "
-        "або що він слабо нагадує текст вакансії в просторі векторних подань. "
-        "Це не означає, що у вас немає навичок."
-    ),
-    "experience": (
-        "Порівнюється текстовий блок із ваших посад (назва, роботодавець, дати) "
-        "або запасний фрагмент резюме з усім текстом вакансії. "
-        "Це не арифметика років досвіду й не структурний чекліст."
-    ),
-    "overall": (
-        "Це схожість повного тексту резюме та повного опису вакансії (косинус у просторі векторів). "
-        "Це не лише загальний бал відповідності."
-    ),
-    "match_score": (
-        "Загальний бал — зважена комбінація трьох показників вище з вагами з цієї відповіді "
-        "(типово: навички 0,5, досвід 0,3, загальна схожість 0,2). "
-        "Адміністратор може змінити ваги в конфігурації сервера."
-    ),
-}
 
 
 def normalized_semantic_weights() -> Tuple[float, float, float]:
@@ -63,8 +40,14 @@ def _cosine_similarity(a: List[float], b: List[float]) -> float:
 
 
 class _Embedder:
-    def __init__(self, embed_fn, dim: int):
+    def __init__(
+        self,
+        embed_fn: Callable[[str], List[float]],
+        embed_batch_fn: Callable[[List[str]], List[float]],
+        dim: int,
+    ):
         self._embed = embed_fn
+        self._embed_batch = embed_batch_fn
         self._dim = dim
 
     def embed_query(self, text: str) -> List[float]:
@@ -74,9 +57,6 @@ class _Embedder:
         if not texts:
             return []
         return self._embed_batch(texts)
-
-    def _embed_batch(self, texts: List[str]) -> List[List[float]]:
-        return [self._embed(t) for t in texts]
 
     @property
     def dimension(self) -> int:
@@ -141,15 +121,13 @@ def _get_sentence_transformers_embedder():
             result[idx] = vec.tolist()
         return result
 
-    embedder = _Embedder(embed_fn, dim)
-    embedder._embed_batch = embed_batch  # type: ignore[attr-defined]
-    return embedder
+    return _Embedder(embed_fn, embed_batch, dim)
 
 
 _embedder = None
 
 
-def get_embedder():
+def _get_cached_embedder():
     global _embedder
     if _embedder is None:
         _embedder = _get_embedder()
@@ -157,7 +135,7 @@ def get_embedder():
 
 
 def embed_text(text: str) -> List[float]:
-    emb = get_embedder()
+    emb = _get_cached_embedder()
     if not (text or text.strip()):
         dim = getattr(emb, "dimension", None) or len(emb.embed_query(" "))
         return [0.0] * dim
@@ -165,7 +143,7 @@ def embed_text(text: str) -> List[float]:
 
 
 def embed_texts_batch(texts: List[str]) -> List[List[float]]:
-    emb = get_embedder()
+    emb = _get_cached_embedder()
     batch_fn = getattr(emb, "_embed_batch", None)
     if callable(batch_fn):
         return batch_fn(texts)

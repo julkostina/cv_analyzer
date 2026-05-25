@@ -3,7 +3,6 @@ export function formatPercent(score: number | null | undefined): string {
   return `${Math.round(score * 1000) / 10}%`;
 }
 
-/** Whole units 0–100 for a score in 0…1 (no percent symbol). */
 export function matchScoreUnits(score: number | null | undefined): number | null {
   if (score == null || Number.isNaN(score)) return null;
   return Math.round(Math.max(0, Math.min(1, score)) * 100);
@@ -11,26 +10,43 @@ export function matchScoreUnits(score: number | null | undefined): number | null
 
 const PLACEHOLDER_REC = /^див\.?\s*підсумок\s*вище\.?$/i;
 
+function ensureSentenceEnd(part: string): string {
+  return part.endsWith(".") || part.endsWith("!") || part.endsWith("?") ? part : `${part}.`;
+}
+
 const COACHING_SECTION_LABEL_RE =
   /(?:^|[\n.]\s*)(?:Сильні сторони|Очікування роботодавця|Відповідність і прогалини|Прогалини|Слабкі сторони|Висновок(?:\s+і\s+поради)?|Висновки)\s*:\s*/gi;
 
-/** If the model returned a JSON blob, extract the summary field. */
-export function unwrapCoachingSummary(text: string): string {
+function unwrapCoachingSummary(text: string): string {
   const t = text.trim();
   if (!t.startsWith("{") || !t.includes("summary")) return t;
   try {
-    const obj = JSON.parse(t) as { summary?: unknown };
-    if (typeof obj.summary === "string" && obj.summary.trim()) {
-      return obj.summary.trim();
+    const obj: unknown = JSON.parse(t);
+    if (typeof obj === "object" && obj !== null && "summary" in obj) {
+      const { summary } = obj as { summary: unknown };
+      if (typeof summary === "string") {
+        const trimmed = summary.trim();
+        if (trimmed) return trimmed;
+      }
     }
-  } catch {
-    /* keep original */
-  }
+  } catch {}
   return t;
 }
 
-/** Remove «Сильні сторони:»-style labels; merge into flowing paragraphs. */
-export function polishCoachingSummary(text: string): string {
+export function getAnalysisNarrativeFields(
+  analysis: Record<string, unknown> | null | undefined,
+): { summary: string | null; strengths: unknown; weaknesses: unknown } {
+  if (!analysis) {
+    return { summary: null, strengths: undefined, weaknesses: undefined };
+  }
+  return {
+    summary: typeof analysis.summary === "string" ? analysis.summary : null,
+    strengths: analysis.strengths,
+    weaknesses: analysis.weaknesses,
+  };
+}
+
+function polishCoachingSummary(text: string): string {
   const t = unwrapCoachingSummary(text).trim();
   if (!t) return t;
   let out = t.replace(COACHING_SECTION_LABEL_RE, ". ");
@@ -55,15 +71,12 @@ function toProseFragment(value: unknown): string | null {
   if (Array.isArray(value)) {
     const parts = value.map((item) => String(item).trim()).filter(Boolean);
     if (parts.length === 0) return null;
-    return parts
-      .map((part) => (part.endsWith(".") || part.endsWith("!") || part.endsWith("?") ? part : `${part}.`))
-      .join(" ");
+    return parts.map(ensureSentenceEnd).join(" ");
   }
   const t = String(value).trim();
   return t.length > 0 ? t : null;
 }
 
-/** One coaching-style block: summary first; legacy fields merged if summary is short or missing. */
 export function buildUnifiedNarrativeParagraphs(
   summary: string | null | undefined,
   strengths: unknown,
@@ -90,16 +103,14 @@ export function buildUnifiedNarrativeParagraphs(
     .map((r) => r.trim())
     .filter((r) => r.length > 0 && !PLACEHOLDER_REC.test(r));
   if (recs.length > 0) {
-    chunks.push(
-      recs
-        .map((part) => (part.endsWith(".") || part.endsWith("!") || part.endsWith("?") ? part : `${part}.`))
-        .join(" "),
-    );
+    chunks.push(recs.map(ensureSentenceEnd).join(" "));
   }
 
   if (chunks.length === 0) return [];
   if (chunks.length === 1) {
-    return chunks[0]!
+    const single = chunks[0];
+    if (!single) return [];
+    return single
       .split(/\n\s*\n/)
       .map((p) => p.trim())
       .filter(Boolean);

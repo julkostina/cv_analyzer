@@ -19,7 +19,6 @@ from app.models import (
     ProjectItem,
 )
 from app.services.semantic_matcher import (
-    SEMANTIC_METRIC_GUIDES,
     SemanticMatchResult,
     compute_semantic_match,
     normalized_semantic_weights,
@@ -491,7 +490,6 @@ def _build_success_response(
     match_reason: Optional[str] = None
     semantic_breakdown: Optional[Dict[str, float]] = None
     semantic_weights: Optional[Dict[str, float]] = None
-    semantic_metric_guides: Optional[Dict[str, str]] = None
     semantic_pipeline_failed = False
     match_explainability = None
     sem_result: Optional[SemanticMatchResult] = None
@@ -516,7 +514,6 @@ def _build_success_response(
             }
             ws, we, wo = normalized_semantic_weights()
             semantic_weights = {"skills": ws, "experience": we, "overall": wo}
-            semantic_metric_guides = dict(SEMANTIC_METRIC_GUIDES)
             match_reason = _semantic_reasoning_text(sem)
             logger.info(
                 "Semantic match score=%.3f (skills=%.3f exp=%.3f overall=%.3f)",
@@ -547,7 +544,6 @@ def _build_success_response(
         missing_competencies=missing if job_stripped else [],
         semantic_breakdown=semantic_breakdown,
         semantic_weights=semantic_weights,
-        semantic_metric_guides=semantic_metric_guides,
         semantic_score_narrative=None,
         match_explainability=match_explainability,
         error=None,

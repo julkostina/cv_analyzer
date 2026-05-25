@@ -1,8 +1,7 @@
 import { uk } from "../../lib/strings-uk";
 import styles from "./HomeAnalyzer.module.css";
 
-export type AnalyzerFormProps = {
-  file: File | null;
+type AnalyzerFormProps = {
   onFileChange: (file: File | null) => void;
   jobDescription: string;
   onJobDescriptionChange: (value: string) => void;
@@ -13,7 +12,6 @@ export type AnalyzerFormProps = {
 };
 
 export function AnalyzerForm({
-  file,
   onFileChange,
   jobDescription,
   onJobDescriptionChange,

@@ -1,28 +1,17 @@
+import { trimResultForStorage } from "./trim-extracted-text";
 import type { CVAnalysisResponse } from "./types";
 
 const STORAGE_KEY = "cv-analyzer-history-v1";
 const MAX_ENTRIES = 50;
-const MAX_EXTRACTED_TEXT_LEN = 12000;
 
 export type HistoryEntry = {
   id: string;
   savedAt: string;
   fileName: string;
-  /** Job posting URL from the analyzer form, if provided. */
   jobUrl?: string | null;
-  /** First chars of pasted job description when no URL was used. */
   jobDescriptionPreview?: string | null;
   result: CVAnalysisResponse;
 };
-
-function trimResultForStorage(r: CVAnalysisResponse): CVAnalysisResponse {
-  const t = r.extracted_text;
-  if (!t || t.length <= MAX_EXTRACTED_TEXT_LEN) return r;
-  return {
-    ...r,
-    extracted_text: `${t.slice(0, MAX_EXTRACTED_TEXT_LEN)}\n[truncated for storage]`,
-  };
-}
 
 function isHistoryEntry(x: unknown): x is HistoryEntry {
   if (!x || typeof x !== "object") return false;

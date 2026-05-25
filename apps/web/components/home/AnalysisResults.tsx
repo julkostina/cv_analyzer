@@ -1,5 +1,10 @@
-import { buildUnifiedNarrativeParagraphs, formatPercent, matchScoreUnits } from "../../lib/analysis-format";
-import { gaugeAriaLabel, uk } from "../../lib/strings-uk";
+import {
+  buildUnifiedNarrativeParagraphs,
+  formatPercent,
+  getAnalysisNarrativeFields,
+  matchScoreUnits,
+} from "../../lib/analysis-format";
+import { uk } from "../../lib/strings-uk";
 import type { CVAnalysisResponse } from "../../lib/types";
 import styles from "./HomeAnalyzer.module.css";
 
@@ -12,18 +17,20 @@ type AnalysisResultsProps = {
 
 const u = uk.analysisResults;
 
+function gaugeAriaLabel(units: number): string {
+  return `Відповідність вакансії: ${units} зі ста`;
+}
+
 function formatSemanticWeight(n: number | undefined): string {
   if (n == null || Number.isNaN(n)) return "—";
   return (Math.round(n * 1000) / 1000).toString();
 }
 
-/** Верхня півкола: плоска хорда внизу, дуга відкривається вгору (стиль спідометра). */
 const GAUGE_CX = 50;
 const GAUGE_CY = 48;
 const GAUGE_R = 38;
 const GAUGE_STROKE = 10;
 const GAUGE_ARC_LENGTH = Math.PI * GAUGE_R;
-/** sweep-flag 1 = верхня півдуга (хорда внизу, відкриття вгору). */
 const GAUGE_PATH = `M ${GAUGE_CX - GAUGE_R} ${GAUGE_CY} A ${GAUGE_R} ${GAUGE_R} 0 0 1 ${GAUGE_CX + GAUGE_R} ${GAUGE_CY}`;
 
 function JobMatchGaugeSvg({ progress }: { progress: number }) {
@@ -186,12 +193,7 @@ export function AnalysisResults({
     );
   }
 
-  const analysis = result.analysis;
-  const summary = analysis && typeof analysis.summary === "string" ? analysis.summary : null;
-  const strengths = analysis?.strengths;
-  const weaknesses = analysis?.weaknesses;
-
-  const a = uk.analyzerForm;
+  const { summary, strengths, weaknesses } = getAnalysisNarrativeFields(result.analysis);
 
   return (
     <div className={styles.results}>
@@ -202,9 +204,9 @@ export function AnalysisResults({
             className={`${styles.btnBase} ${styles.btnSecondary}`}
             disabled={pdfLoading}
             onClick={onDownloadPdf}
-            title={a.downloadPdfHelp}
+            title={u.downloadPdfHelp}
           >
-            {pdfLoading ? a.pdfLoading : a.downloadPdf}
+            {pdfLoading ? u.pdfLoading : u.downloadPdf}
           </button>
         </div>
       ) : null}
@@ -235,7 +237,7 @@ export function AnalysisResults({
               <div className={styles.competencyCol}>
                 <p className={styles.label}>{u.aligned}</p>
                 <ul className={styles.list}>
-                  {result.matched_competencies!.map((x, i) => (
+                  {result.matched_competencies?.map((x, i) => (
                     <li key={`m-${i}`}>{x}</li>
                   ))}
                 </ul>
@@ -245,7 +247,7 @@ export function AnalysisResults({
               <div className={styles.competencyCol}>
                 <p className={styles.label}>{u.needsAttention}</p>
                 <ul className={styles.list}>
-                  {result.missing_competencies!.map((x, i) => (
+                  {result.missing_competencies?.map((x, i) => (
                     <li key={`g-${i}`}>{x}</li>
                   ))}
                 </ul>
@@ -258,7 +260,7 @@ export function AnalysisResults({
       {(result.skills?.length ?? 0) > 0 ? (
         <section className={styles.card}>
           <h2 className={styles.cardTitle}>{u.skillsFromResume}</h2>
-          <p className={styles.reasoning}>{result.skills!.join(", ")}</p>
+          <p className={styles.reasoning}>{result.skills?.join(", ")}</p>
         </section>
       ) : null}
 

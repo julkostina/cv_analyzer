@@ -1,33 +1,33 @@
-export type ExperienceItem = {
+type ExperienceItem = {
   employer?: string | null;
   title?: string | null;
   duration?: string | null;
 };
 
-export type CertificateItem = {
+type CertificateItem = {
   name?: string | null;
   institution?: string | null;
   year?: string | null;
 };
 
-export type EducationItem = {
+type EducationItem = {
   degree?: string | null;
   institution?: string | null;
   year?: string | null;
 };
 
-export type ProjectItem = {
+type ProjectItem = {
   name?: string | null;
   description?: string | null;
   link?: string | null;
 };
 
-export type ExplainabilityAttribution = {
+type ExplainabilityAttribution = {
   feature: string;
   contribution: number;
 };
 
-export type ExplainabilityMethodResult = {
+type ExplainabilityMethodResult = {
   method: "shap" | "lime";
   baseline_score: number;
   predicted_score: number;
@@ -35,7 +35,7 @@ export type ExplainabilityMethodResult = {
   top_negative: ExplainabilityAttribution[];
 };
 
-export type MatchExplainability = {
+type MatchExplainability = {
   component_attributions?: Record<string, number> | null;
   shap?: ExplainabilityMethodResult | null;
   lime?: ExplainabilityMethodResult | null;
@@ -57,7 +57,6 @@ export type CVAnalysisResponse = {
   missing_competencies?: string[] | null;
   semantic_breakdown?: Record<string, number> | null;
   semantic_weights?: Record<string, number> | null;
-  semantic_metric_guides?: Record<string, string> | null;
   semantic_score_narrative?: string | null;
   match_explainability?: MatchExplainability | null;
   error?: string | null;

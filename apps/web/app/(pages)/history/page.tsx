@@ -8,7 +8,11 @@ import {
   removeHistoryEntry,
   type HistoryEntry,
 } from "../../../lib/history-storage";
-import { buildUnifiedNarrativeParagraphs, formatPercent } from "../../../lib/analysis-format";
+import {
+  buildUnifiedNarrativeParagraphs,
+  formatPercent,
+  getAnalysisNarrativeFields,
+} from "../../../lib/analysis-format";
 import { uk } from "../../../lib/strings-uk";
 import { PageHeader } from "../../../components/page-header/PageHeader";
 import { PageLayout } from "../../../components/page-layout/PageLayout";
@@ -63,12 +67,11 @@ function HistoryJobRow({ entry }: { entry: HistoryEntry }) {
 
 function HistorySummaryBlock({ entry }: { entry: HistoryEntry }) {
   const h = uk.history;
-  const analysis = entry.result.analysis;
-  const summary = analysis && typeof analysis.summary === "string" ? analysis.summary : null;
+  const { summary, strengths, weaknesses } = getAnalysisNarrativeFields(entry.result.analysis);
   const paragraphs = buildUnifiedNarrativeParagraphs(
     summary,
-    analysis?.strengths,
-    analysis?.weaknesses,
+    strengths,
+    weaknesses,
     entry.result.recommendations,
   );
   if (paragraphs.length === 0) return null;
@@ -156,7 +159,7 @@ export default function HistoryPage() {
                     <span>{h.matchDash}</span>
                   )}
                   {(e.result.recommendations?.length ?? 0) > 0 ? (
-                    <span>{h.tips(e.result.recommendations!.length)}</span>
+                    <span>{h.tips(e.result.recommendations?.length ?? 0)}</span>
                   ) : null}
                 </div>
                 <HistorySummaryBlock entry={e} />

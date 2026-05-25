@@ -2,13 +2,6 @@ from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any, Literal
 
 
-class CVUpload(BaseModel):
-    filename: str = Field(..., min_length=1, pattern=r"^[\w]+\.(pdf|docx?)$")
-    file_type: Literal["application/pdf", "application/msword"]
-    file_size: int = Field(..., gt=0)
-    file_content: bytes = Field(...)
-
-
 class CVAnalysisRequest(BaseModel):
     job_description: Optional[str] = None
     analysis_type: str = Field(default="full")
@@ -81,12 +74,6 @@ class MatchExplainability(BaseModel):
     )
 
 
-class JobRequirementsExtraction(BaseModel):
-    """Extracted skills and requirements summary from a job description."""
-    skills: List[str] = Field(default_factory=list, description="Required skills/technologies from the job description")
-    requirements_summary: str = Field(default="", description="Short summary of key requirements (experience, education, etc.)")
-
-
 class CVAnalysisResponse(BaseModel):
     success: bool
     extracted_text: Optional[str] = None
@@ -126,10 +113,6 @@ class CVAnalysisResponse(BaseModel):
     semantic_weights: Optional[Dict[str, float]] = Field(
         None,
         description="Normalized weights used to combine the three similarities into match_score: keys skills, experience, overall (maps to overall_similarity / full-CV-vs-job).",
-    )
-    semantic_metric_guides: Optional[Dict[str, str]] = Field(
-        None,
-        description="Short user-facing explanations for each similarity and for match_score. Present when semantic_breakdown is present.",
     )
     semantic_score_narrative: Optional[str] = Field(
         None,

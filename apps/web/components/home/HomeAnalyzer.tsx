@@ -69,7 +69,6 @@ export function HomeAnalyzer() {
         <p className={styles.serviceSub}>{t.sub}</p>
 
         <AnalyzerForm
-          file={file}
           onFileChange={setFile}
           jobDescription={jobDescription}
           onJobDescriptionChange={setJobDescription}

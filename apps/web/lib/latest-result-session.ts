@@ -1,21 +1,12 @@
+import { trimResultForStorage } from "./trim-extracted-text";
 import type { CVAnalysisResponse } from "./types";
 
 const SESSION_KEY = "cv-analyzer-latest-result-v1";
-const MAX_EXTRACTED_TEXT_LEN = 12000;
 
 export type LatestResultPayload = {
   fileName: string;
   result: CVAnalysisResponse;
 };
-
-function trimResultForSession(r: CVAnalysisResponse): CVAnalysisResponse {
-  const t = r.extracted_text;
-  if (!t || t.length <= MAX_EXTRACTED_TEXT_LEN) return r;
-  return {
-    ...r,
-    extracted_text: `${t.slice(0, MAX_EXTRACTED_TEXT_LEN)}\n[truncated for storage]`,
-  };
-}
 
 function isPayload(x: unknown): x is LatestResultPayload {
   if (!x || typeof x !== "object") return false;
@@ -33,7 +24,7 @@ export function saveLatestResultSession(fileName: string, result: CVAnalysisResp
   try {
     const payload: LatestResultPayload = {
       fileName,
-      result: trimResultForSession(result),
+      result: trimResultForStorage(result),
     };
     sessionStorage.setItem(SESSION_KEY, JSON.stringify(payload));
     return true;
@@ -51,13 +42,5 @@ export function loadLatestResultSession(): LatestResultPayload | null {
     return isPayload(parsed) ? parsed : null;
   } catch {
     return null;
-  }
-}
-
-export function clearLatestResultSession(): void {
-  if (typeof window === "undefined") return;
-  try {
-    sessionStorage.removeItem(SESSION_KEY);
-  } catch {
   }
 }

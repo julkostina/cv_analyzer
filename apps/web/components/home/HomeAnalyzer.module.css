@@ -317,69 +317,6 @@
   margin-right: auto;
 }
 
-.semanticNarrative {
-  margin-top: 1rem;
-  text-align: left;
-  align-self: stretch;
-  max-width: 40rem;
-  margin-left: auto;
-  margin-right: auto;
-  padding: 1rem 1.1rem;
-  border-radius: 8px;
-  background: var(--surface-muted);
-  border: 1px solid var(--border-soft);
-}
-
-.semanticNarrativeTitle {
-  margin: 0 0 0.65rem;
-  font-size: 0.95rem;
-  font-weight: 650;
-  font-family: var(--font-family-title);
-  color: var(--color-brand-2);
-}
-
-.semanticNarrativePara {
-  margin: 0 0 0.65rem;
-  font-size: 0.875rem;
-  line-height: 1.55;
-  color: var(--foreground);
-  opacity: 0.92;
-}
-
-.semanticNarrativePara:last-child {
-  margin-bottom: 0;
-}
-
-.semanticHelp {
-  margin-top: 0.65rem;
-  text-align: left;
-  align-self: stretch;
-  max-width: 40rem;
-  margin-left: auto;
-  margin-right: auto;
-}
-
-.semanticHelp summary {
-  cursor: pointer;
-  font-size: 0.8125rem;
-  font-weight: 600;
-  color: var(--color-brand-2);
-  padding: 0.25rem 0;
-}
-
-.semanticHelpList {
-  margin: 0.5rem 0 0;
-  padding-left: 1.25rem;
-  font-size: 0.8125rem;
-  line-height: 1.5;
-  color: var(--foreground);
-  opacity: 0.9;
-}
-
-.semanticHelpList li {
-  margin-bottom: 0.45rem;
-}
-
 .explainability {
   margin-top: 0.85rem;
   text-align: left;
@@ -410,34 +347,6 @@
   line-height: 1.5;
   color: var(--foreground);
   opacity: 0.9;
-}
-
-.explainabilitySection {
-  margin-top: 0.75rem;
-}
-
-.explainabilitySubtitle {
-  margin: 0 0 0.35rem;
-  font-size: 0.8125rem;
-  font-weight: 600;
-}
-
-.explainabilityLabel {
-  margin: 0 0 0.25rem;
-  font-size: 0.75rem;
-  font-weight: 600;
-  opacity: 0.85;
-}
-
-.explainabilityList {
-  margin: 0;
-  padding-left: 1.15rem;
-  font-size: 0.8125rem;
-  line-height: 1.5;
-}
-
-.explainabilityList li {
-  margin-bottom: 0.35rem;
 }
 
 .analysisProse {
