@@ -8,7 +8,7 @@ import {
   removeHistoryEntry,
   type HistoryEntry,
 } from "../../../lib/history-storage";
-import { formatPercent } from "../../../lib/analysis-format";
+import { buildUnifiedNarrativeParagraphs, formatPercent } from "../../../lib/analysis-format";
 import { uk } from "../../../lib/strings-uk";
 import { PageHeader } from "../../../components/page-header/PageHeader";
 import { PageLayout } from "../../../components/page-layout/PageLayout";
@@ -24,6 +24,65 @@ function formatDate(iso: string): string {
   } catch {
     return iso;
   }
+}
+
+function displayJobUrl(url: string): string {
+  try {
+    const u = new URL(url);
+    const path = u.pathname.length > 40 ? `${u.pathname.slice(0, 37)}…` : u.pathname;
+    return `${u.hostname}${path}`;
+  } catch {
+    return url.length > 56 ? `${url.slice(0, 53)}…` : url;
+  }
+}
+
+function HistoryJobRow({ entry }: { entry: HistoryEntry }) {
+  const h = uk.history;
+  const url = entry.jobUrl?.trim();
+  if (url) {
+    return (
+      <p className={historyStyles.jobRow}>
+        <span className={historyStyles.jobLabel}>{h.jobLink}:</span>
+        <a className={historyStyles.jobLink} href={url} target="_blank" rel="noopener noreferrer">
+          {displayJobUrl(url)}
+        </a>
+      </p>
+    );
+  }
+  const preview = entry.jobDescriptionPreview?.trim();
+  if (preview) {
+    return (
+      <div className={historyStyles.jobRow}>
+        <span className={historyStyles.jobLabel}>{h.jobTextOnly}</span>
+        <p className={historyStyles.jobPreview}>{preview}</p>
+      </div>
+    );
+  }
+  return null;
+}
+
+function HistorySummaryBlock({ entry }: { entry: HistoryEntry }) {
+  const h = uk.history;
+  const analysis = entry.result.analysis;
+  const summary = analysis && typeof analysis.summary === "string" ? analysis.summary : null;
+  const paragraphs = buildUnifiedNarrativeParagraphs(
+    summary,
+    analysis?.strengths,
+    analysis?.weaknesses,
+    entry.result.recommendations,
+  );
+  if (paragraphs.length === 0) return null;
+
+  return (
+    <div className={historyStyles.summaryBlock}>
+      <p className={historyStyles.summaryTitle}>{h.analysisSummary}</p>
+      <div className={historyStyles.summaryScroll}>
+        {paragraphs.map((para, i) => (
+          <p key={i}>{para}</p>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 export default function HistoryPage() {
@@ -87,6 +146,7 @@ export default function HistoryPage() {
                     {formatDate(e.savedAt)}
                   </time>
                 </div>
+                <HistoryJobRow entry={e} />
                 <div className={historyStyles.meta}>
                   {e.result.match_score != null ? (
                     <span>
@@ -99,9 +159,7 @@ export default function HistoryPage() {
                     <span>{h.tips(e.result.recommendations!.length)}</span>
                   ) : null}
                 </div>
-                {e.result.analysis && typeof e.result.analysis.summary === "string" ? (
-                  <p className={historyStyles.summary}>{e.result.analysis.summary}</p>
-                ) : null}
+                <HistorySummaryBlock entry={e} />
                 <button type="button" className={historyStyles.removeBtn} onClick={() => onRemove(e.id)}>
                   {h.remove}
                 </button>

@@ -8,6 +8,10 @@ export type HistoryEntry = {
   id: string;
   savedAt: string;
   fileName: string;
+  /** Job posting URL from the analyzer form, if provided. */
+  jobUrl?: string | null;
+  /** First chars of pasted job description when no URL was used. */
+  jobDescriptionPreview?: string | null;
   result: CVAnalysisResponse;
 };
 
@@ -50,13 +54,22 @@ function saveHistory(entries: HistoryEntry[]): void {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
 }
 
-export function addHistoryEntry(params: { fileName: string; result: CVAnalysisResponse }): void {
+export function addHistoryEntry(params: {
+  fileName: string;
+  result: CVAnalysisResponse;
+  jobUrl?: string | null;
+  jobDescription?: string | null;
+}): void {
   if (typeof window === "undefined") return;
   if (!params.result.success) return;
+  const url = params.jobUrl?.trim() || null;
+  const desc = params.jobDescription?.trim() || null;
   const entry: HistoryEntry = {
     id: crypto.randomUUID(),
     savedAt: new Date().toISOString(),
     fileName: params.fileName,
+    jobUrl: url,
+    jobDescriptionPreview: url ? null : desc ? desc.slice(0, 400) : null,
     result: trimResultForStorage(params.result),
   };
   const prev = loadHistory();
