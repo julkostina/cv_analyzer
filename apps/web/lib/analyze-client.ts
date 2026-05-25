@@ -81,3 +81,22 @@ export async function downloadAnalysisPdf(
 
   return res.blob();
 }
+
+export async function downloadReportPdfFromResult(result: CVAnalysisResponse): Promise<Blob> {
+  const res = await fetch(`${getApiBaseUrl()}/api/v1/report/pdf`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(result),
+  });
+
+  if (!res.ok) {
+    const ct = res.headers.get("content-type") ?? "";
+    if (ct.includes("application/json")) {
+      const err = (await res.json()) as { detail?: string };
+      throw new Error(err.detail ?? uk.analyzeClient.requestFailed(res.status));
+    }
+    throw new Error(uk.analyzeClient.pdfFailed(res.status));
+  }
+
+  return res.blob();
+}
