@@ -1,13 +1,12 @@
 import logging
 import os
-import re
 import traceback
 from pathlib import Path
 from typing import Annotated, Optional
 
 import aiofiles
 import httpx
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Body, File, Form, HTTPException, UploadFile
 from fastapi.responses import Response
 
 from app.config import settings
@@ -16,6 +15,7 @@ from app.services.analysis_pdf import render_analysis_pdf
 from app.services.cv_analyzer import CVAnalyzer
 from app.services.cv_parser import CVParser
 from app.utils.file_validator import validate_file
+from app.utils.job_url_extract import extract_job_text_from_html
 from app.utils.text_preprocess import normalize_text_for_pipeline
 
 logger = logging.getLogger(__name__)
@@ -27,17 +27,27 @@ JOB_URL_CONTENT_LIMIT = 50_000
 
 
 async def _fetch_job_description_from_url(url: str) -> str:
-    """Fetch URL and return body as plain text. Strips HTML tags."""
-    async with httpx.AsyncClient(timeout=15.0, follow_redirects=True) as client:
+    """Fetch URL and return job posting as readable plain text (JSON-LD JobPosting preferred)."""
+    headers = {
+        "User-Agent": "Mozilla/5.0 (compatible; CVAnalyzer/1.0; +https://localhost)",
+        "Accept": "text/html,application/xhtml+xml",
+    }
+    async with httpx.AsyncClient(timeout=15.0, follow_redirects=True, headers=headers) as client:
         resp = await client.get(url)
         resp.raise_for_status()
-        text = resp.text
-    if len(text) > JOB_URL_CONTENT_LIMIT:
-        text = text[:JOB_URL_CONTENT_LIMIT] + "\n[... truncated]"
-    # Strip HTML tags for a rough plain-text version
-    text = re.sub(r"<[^>]+>", " ", text)
-    text = re.sub(r"\s+", " ", text).strip()
-    return normalize_text_for_pipeline(text)
+        html = resp.text
+    if len(html) > JOB_URL_CONTENT_LIMIT:
+        html = html[:JOB_URL_CONTENT_LIMIT]
+
+    extracted = extract_job_text_from_html(html)
+    if not extracted or len(extracted.strip()) < 80:
+        raise ValueError(
+            "Сторінка вакансії не містить розпізнаного тексту оголошення. "
+            "Вставте опис вакансії вручну в поле «Вимоги / опис вакансії»."
+        )
+    if len(extracted) > JOB_URL_CONTENT_LIMIT:
+        extracted = extracted[:JOB_URL_CONTENT_LIMIT] + "\n[... обрізано]"
+    return normalize_text_for_pipeline(extracted)
 
 
 @router.post("/analyze", response_model=None)
@@ -145,3 +155,23 @@ async def analyze_cv(
                 os.remove(file_path)
             except OSError:
                 pass
+
+
+@router.post("/report/pdf")
+async def report_pdf_from_analysis(result: CVAnalysisResponse = Body(...)):
+    """Build PDF from an existing analysis response (no re-upload or re-analysis)."""
+    if not result.success:
+        raise HTTPException(
+            status_code=400,
+            detail=result.error or "Analysis failed; PDF was not generated.",
+        )
+    try:
+        pdf_bytes = render_analysis_pdf(result)
+    except Exception as e:
+        logger.exception("PDF render failed: %s", e)
+        raise HTTPException(status_code=500, detail=str(e)) from e
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": 'attachment; filename="cv-analysis-report.pdf"'},
+    )
