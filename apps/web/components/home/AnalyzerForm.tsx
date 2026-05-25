@@ -9,9 +9,7 @@ export type AnalyzerFormProps = {
   jobUrl: string;
   onJobUrlChange: (value: string) => void;
   loading: boolean;
-  pdfLoading: boolean;
   onSubmit: (e: React.FormEvent) => void;
-  onDownloadPdf: () => void;
 };
 
 export function AnalyzerForm({
@@ -22,9 +20,7 @@ export function AnalyzerForm({
   jobUrl,
   onJobUrlChange,
   loading,
-  pdfLoading,
   onSubmit,
-  onDownloadPdf,
 }: AnalyzerFormProps) {
   const a = uk.analyzerForm;
   return (
@@ -86,25 +82,12 @@ export function AnalyzerForm({
         </div>
       </section>
 
-      <section className={styles.card} aria-label={`${a.analyze} / ${a.downloadPdf}`}>
+      <section className={styles.card} aria-label={a.analyze}>
         <div className={styles.actions}>
           <button type="submit" className={`${styles.btnBase} ${styles.btnPrimary}`} disabled={loading}>
             {loading ? a.analyzing : a.analyze}
           </button>
-          <button
-            type="button"
-            className={`${styles.btnBase} ${styles.btnSecondary}`}
-            disabled={pdfLoading || !file}
-            onClick={onDownloadPdf}
-            title={a.downloadPdfHelp}
-            aria-describedby="download-pdf-help"
-          >
-            {pdfLoading ? a.pdfLoading : a.downloadPdf}
-          </button>
         </div>
-        <span id="download-pdf-help" className={styles.visuallyHidden}>
-          {a.downloadPdfHelp}
-        </span>
       </section>
     </form>
   );
