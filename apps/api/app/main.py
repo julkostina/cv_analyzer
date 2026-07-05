@@ -15,9 +15,14 @@ logger = logging.getLogger(__name__)
 app = FastAPI(title="CV Analyzer API", description="API for analyzing CVs")
 
 if settings.environment == "development":
+    cors_origins = ["*"]
+else:
+    cors_origins = settings.cors_origins
+
+if cors_origins:
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
+        allow_origins=cors_origins,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],

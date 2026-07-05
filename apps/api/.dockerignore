@@ -1,0 +1,8 @@
+.venv
+__pycache__
+*.pyc
+.env
+uploads
+tests
+cv_analyzer_api.egg-info
+.pytest_cache

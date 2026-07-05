@@ -13,6 +13,12 @@ class Settings(BaseSettings):
     openai_api_key: str = ""
     gemini_api_key: str = ""
     environment: str = "development"
+    # Comma-separated frontend origin(s) allowed to call this API in production (e.g. https://your-app.vercel.app).
+    allowed_origins: str = ""
+
+    @property
+    def cors_origins(self) -> list[str]:
+        return [origin.strip() for origin in self.allowed_origins.split(",") if origin.strip()]
 
     # Ollama model for development (ollama pull …). 8B+ models follow JSON schema more reliably than 3B.
     ollama_model: str = "llama3.1:8b"
